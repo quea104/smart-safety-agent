@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>삼성물산 건설 안전 AI Agent (Final)</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f6f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .container { width: 100%; max-width: 600px; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: flex; flex-direction: column; height: 80vh; }
+        h2 { color: #004c97; text-align: center; margin-bottom: 10px; font-weight: bold; }
+        .chat-window { flex: 1; overflow-y: auto; border: 1px solid #ddd; padding: 15px; border-radius: 8px; background-color: #fff; margin-bottom: 15px; }
+        .message { margin-bottom: 15px; padding: 12px 18px; border-radius: 15px; max-width: 80%; line-height: 1.6; font-size: 15px; word-break: break-all; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .message-content { white-space: pre-wrap; }
+        .message-content strong { color: #d63384; font-weight: 900; background-color: #fff0f6; padding: 0 4px; border-radius: 4px; }
+        .role-badge { display: block; font-size: 11px; font-weight: bold; margin-bottom: 6px; opacity: 0.7; }
+        .user { background-color: #004c97; color: white !important; margin-left: auto; text-align: right; border-bottom-right-radius: 0; }
+        .user .role-badge { color: #ddd; }
+        .ai { background-color: #e9ecef; color: #333 !important; margin-right: auto; text-align: left; border-bottom-left-radius: 0; }
+        .input-area { display: flex; gap: 10px; }
+        input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 15px; }
+        button { padding: 10px 20px; background-color: #004c97; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+        .debug-info { font-size: 11px; color: red; text-align: center; margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+    <div id="app" class="container">
+        <h2>🏗️ 건설 안전 챗봇</h2>
+        
+        <div class="chat-window" ref="chatWindow">
+            <div v-if="messages.length === 0" style="text-align: center; color: #888; margin-top: 50px;">
+                궁금한 안전 수칙을 물어보세요.<br><small>(예: 굴착 작업 시 주의사항은?)</small>
+            </div>
+            
+            <div v-for="(msg, index) in messages" :key="index" :class="['message', msg.role]">
+                <span class="role-badge">
+                    {{ msg.role === 'user' ? '🧑‍💻 나' : '🤖 AI 안전 비서' }}
+                </span>
+                
+                <div class="message-content" v-html="formatMessage(msg.text)"></div>
+            </div>
+        </div>
+
+        <div class="input-area">
+            <input v-model="userInput" @keyup.enter="sendMessage" placeholder="질문을 입력하세요..." :disabled="loading">
+            <button @click="sendMessage" :disabled="loading">전송</button>
+        </div>
+        <div v-if="loading" class="debug-info">AI가 답변을 생성 중입니다...</div>
+    </div>
+
+    <script>
+        const { createApp, ref, nextTick } = Vue;
+
+        createApp({
+            setup() {
+                const userInput = ref('');
+                const messages = ref([]);
+                const loading = ref(false);
+                const chatWindow = ref(null);
+
+                // [핵심 기능] **텍스트** 를 굵게 변환하는 함수
+                const formatMessage = (text) => {
+                    if (!text) return '';
+                    // 정규식으로 **...** 패턴을 찾아 <strong> 태그로 감싸기
+                    return text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                };
+
+                const scrollToBottom = async () => {
+                    await nextTick();
+                    if (chatWindow.value) {
+                        chatWindow.value.scrollTop = chatWindow.value.scrollHeight;
+                    }
+                };
+
+                const sendMessage = async () => {
+                    if (!userInput.value.trim()) return;
+
+                    const query = userInput.value;
+                    messages.value.push({ role: 'user', text: query });
+                    userInput.value = '';
+                    loading.value = true;
+                    scrollToBottom();
+
+                    try {
+                        const response = await axios.post('http://localhost:8080/api/safety/query', {
+                            query: query
+                        });
+
+                        const aiAnswer = response.data.answer || "응답 내용이 없습니다.";
+                        messages.value.push({ role: 'ai', text: aiAnswer });
+
+                    } catch (error) {
+                        console.error("에러:", error);
+                        messages.value.push({ role: 'ai', text: '오류가 발생했습니다. 서버 연결을 확인해주세요.' });
+                    } finally {
+                        loading.value = false;
+                        scrollToBottom();
+                    }
+                };
+
+                // formatMessage를 꼭 반환해야 HTML에서 사용 가능
+                return { userInput, messages, loading, sendMessage, chatWindow, formatMessage };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
