@@ -32,3 +32,6 @@ graph TD;
 * **Frontend**: Vue.js 3 (Composition API) - 사용자 인터랙션 담당, CDN 형태
 * **Backend**: Spring Boot 3.5.9 - 엔터프라이즈급 API 관리 및 보안 계층 역할
 * **AI Engine**: Python FastAPI, LangChain - 프롬프트 엔지니어링 및 LLM 연동
+
+## Demo
+https://github.com/user-attachments/assets/10f3cec9-3ae4-48bc-a915-a1df7887aa91
